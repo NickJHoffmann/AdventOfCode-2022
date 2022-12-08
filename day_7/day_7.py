@@ -1,30 +1,19 @@
 import sys
-from typing import Optional
-
-class File:
-    def __init__(self, name: str, size: int):
-      self.name: str = name
-      self.size: int = size
+from typing import Dict
 
 
 class Folder:
     def __init__(self, name: str):
         self.name: str = name
         self.parent: Folder = None
-        self.subfolders: list[Folder] = []
-        self.files: list[File] = []
+        self.subfolders: Dict[str, Folder] = {}
+        self.files: Dict[str, int] = {}
 
 
 def get_lines(filename: str) -> str:
     with open(filename) as file:
         while (line := file.readline().strip()):
             yield line
-
-
-def find_subfolder(root: Folder, folder_name: str):
-    for folder in root.subfolders:
-        if folder.name == folder_name:
-            return folder
 
 
 def build_tree(filename: str) -> Folder:
@@ -40,50 +29,30 @@ def build_tree(filename: str) -> Folder:
                 elif line[2] == "..":
                     current_folder = current_folder.parent
                 else:
-                    current_folder = find_subfolder(current_folder, line[2])
+                    current_folder = current_folder.subfolders[line[2]]
             elif line[1] == "ls":
                 continue
         else:
             if line[0] == "dir":
                 new_folder = Folder(line[1])
                 new_folder.parent = current_folder
-                current_folder.subfolders.append(new_folder)
+                current_folder.subfolders[line[1]] = new_folder
             else:
-                current_folder.files.append(File(line[1], int(line[0])))
+                current_folder.files[line[1]] = int(line[0])
     return root
-                
-
-def sum_of_files(folder: Folder):
-    file_sum = 0
-    for file in folder.files:
-        file_sum += file.size
-    return file_sum
-
-
-def calculate_folder_size(root: Folder, bucket: list = None, size_search_cap: int = None) -> int:
-    current_folder_size = 0
-    for folder in root.subfolders:
-        current_folder_size += calculate_folder_size(folder, bucket, size_search_cap)
-    
-    current_folder_size += sum_of_files(root)
-
-    if bucket is not None and size_search_cap is not None:
-        if current_folder_size <= size_search_cap:
-            bucket.append((root, current_folder_size))
-
-    return current_folder_size
 
 
 def calculate_folder_sizes(root: Folder, bucket: list) -> int:
     current_folder_size = 0
-    for folder in root.subfolders:
+    for folder in root.subfolders.values():
         current_folder_size += calculate_folder_sizes(folder, bucket)
     
-    current_folder_size += sum_of_files(root)
+    current_folder_size += sum(root.files.values())
 
     bucket.append(current_folder_size)
 
     return current_folder_size
+
 
 if __name__ == "__main__":
     root = build_tree(sys.argv[1])
